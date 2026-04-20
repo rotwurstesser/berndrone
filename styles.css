@@ -113,6 +113,10 @@ body {
   white-space: nowrap;
 }
 
+.flight-bar__separator {
+  color: rgba(255, 255, 255, 0.28);
+}
+
 .hud__eyebrow {
   color: var(--accent);
   font-size: 0.78rem;

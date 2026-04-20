@@ -102,6 +102,7 @@ const swissBounds = Rectangle.fromDegrees(5.95, 45.75, 10.7, 47.95);
 
 const streamStatus = document.querySelector("#stream-status");
 const streetReadout = document.querySelector("#street-readout");
+const municipalityReadout = document.querySelector("#municipality-readout");
 const altitudeReadout = document.querySelector("#altitude-readout");
 const speedReadout = document.querySelector("#speed-readout");
 const locationSelect = document.querySelector("#location-select");
@@ -335,6 +336,7 @@ async function placeDrone(preset) {
     requestId: 0,
   };
   streetReadout.textContent = "Looking up...";
+  municipalityReadout.textContent = "Looking up...";
 
   if (!droneEntity) {
     droneEntity = viewer.entities.add({
@@ -608,12 +610,14 @@ function maybeLookupStreet(cartographic) {
   const requestId = streetLookupState.requestId;
 
   lookupStreetName(longitude, latitude)
-    .then((streetName) => {
+    .then((locationInfo) => {
       if (requestId !== streetLookupState.requestId) {
         return;
       }
 
-      streetReadout.textContent = streetName ?? "No street match";
+      streetReadout.textContent = locationInfo.street ?? "No street match";
+      municipalityReadout.textContent =
+        locationInfo.municipality ?? "Gemeinde unavailable";
     })
     .catch(() => {
       if (requestId !== streetLookupState.requestId) {
@@ -621,6 +625,7 @@ function maybeLookupStreet(cartographic) {
       }
 
       streetReadout.textContent = "Street unavailable";
+      municipalityReadout.textContent = "Gemeinde unavailable";
     });
 }
 
@@ -655,9 +660,14 @@ async function lookupStreetName(longitude, latitude) {
       result.properties?.stn_label || result.attributes?.stn_label,
   );
 
-  return (
-    streetResult?.properties?.stn_label ??
-    streetResult?.attributes?.stn_label ??
-    null
-  );
+  return {
+    street:
+      streetResult?.properties?.stn_label ??
+      streetResult?.attributes?.stn_label ??
+      null,
+    municipality:
+      streetResult?.properties?.com_name ??
+      streetResult?.attributes?.com_name ??
+      null,
+  };
 }
