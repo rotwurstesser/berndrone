@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
+    <title>Bern Drone</title>
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <link
+      rel="preconnect"
+      href="https://cdn.jsdelivr.net"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/cesium@1.127.0/Build/Cesium/Widgets/widgets.css"
+    />
+    <link
+      rel="stylesheet"
+      href="./styles.css"
+    />
+  </head>
+  <body>
+    <div id="app-shell">
+      <div id="cesium-root" aria-label="3D Bern drone viewer"></div>
+
+      <button
+        id="hud-toggle"
+        class="hud-toggle"
+        type="button"
+        aria-expanded="true"
+        aria-controls="hud-panel"
+      >
+        Hide Settings
+      </button>
+
+      <aside id="hud-panel" class="hud">
+        <div class="hud__eyebrow">Bern Drone</div>
+        <h1>Third-person drone flight over Bern in streamed 3D.</h1>
+        <p class="hud__lede">
+          Terrain, buildings, and imagery stream on demand from swisstopo so
+          the world loads progressively instead of trying to render everything
+          at once.
+        </p>
+
+        <div class="hud__panel">
+          <label class="hud__label" for="location-select">Preset</label>
+          <select id="location-select"></select>
+          <button id="reset-flight" type="button">Reset Drone</button>
+        </div>
+
+        <div class="hud__panel hud__panel--compact">
+          <div class="hud__label">Controls</div>
+          <p><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> fly camera-relative</p>
+          <p><kbd>↑</kbd> rise <kbd>↓</kbd> descend</p>
+          <p><kbd>Shift</kbd> turbo <kbd>Space</kbd> brake</p>
+          <p>Drag to orbit and tilt, wheel to zoom</p>
+        </div>
+
+        <div class="hud__panel hud__status">
+          <div><span>Status</span><strong id="stream-status">Booting world...</strong></div>
+          <div><span>Altitude</span><strong id="altitude-readout">-</strong></div>
+          <div><span>Speed</span><strong id="speed-readout">-</strong></div>
+        </div>
+      </aside>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/cesium@1.127.0/Build/Cesium/Cesium.js"></script>
+    <script type="module" src="./src/app.js"></script>
+  </body>
+</html>
