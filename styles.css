@@ -43,10 +43,67 @@ body {
   inset: 0;
 }
 
+.speed-lines {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 160ms ease;
+  overflow: hidden;
+}
+
+.speed-lines.is-active {
+  opacity: 1;
+}
+
+.speed-lines::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at center, transparent 0 28%, rgba(8, 17, 27, 0.18) 56%, rgba(8, 17, 27, 0.54) 100%);
+}
+
+.speed-lines__lane {
+  position: absolute;
+  top: -18%;
+  bottom: -18%;
+  width: 28%;
+  background: linear-gradient(180deg, transparent, rgba(115, 199, 255, 0.12), transparent);
+  filter: blur(2px);
+  transform: skewX(-18deg) translateY(-10%);
+  animation: swoosh 460ms linear infinite;
+}
+
+.speed-lines__lane--one {
+  left: 16%;
+}
+
+.speed-lines__lane--two {
+  left: 43%;
+  animation-duration: 380ms;
+}
+
+.speed-lines__lane--three {
+  left: 70%;
+  animation-duration: 320ms;
+}
+
+@keyframes swoosh {
+  from {
+    transform: skewX(-18deg) translateY(-46%);
+  }
+  to {
+    transform: skewX(-18deg) translateY(46%);
+  }
+}
+
 .hud {
   position: absolute;
   top: 1.25rem;
   left: 1.25rem;
+  z-index: 8;
   width: min(25rem, calc(100vw - 2.5rem));
   padding: 1rem;
   border: 1px solid var(--line);
@@ -65,7 +122,7 @@ body {
   position: absolute;
   top: 1.25rem;
   right: 1.25rem;
-  z-index: 10;
+  z-index: 8;
   width: auto;
   min-width: 10rem;
   padding: 0.8rem 1rem;
@@ -83,7 +140,7 @@ body {
   position: absolute;
   bottom: 1.25rem;
   left: 50%;
-  z-index: 10;
+  z-index: 8;
   display: flex;
   align-items: center;
   gap: 0.75rem;

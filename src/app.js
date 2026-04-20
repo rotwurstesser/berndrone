@@ -80,7 +80,7 @@ const LOCATIONS = [
 
 const DEFAULT_CLEARANCE_METERS = 14;
 const BASE_SPEED = 42;
-const BOOST_MULTIPLIER = 4.8;
+const BOOST_MULTIPLIER = 8;
 const ASCENT_RATE = 24;
 const CAMERA_RANGE = { min: 12, max: 80 };
 const DISPLAY_PITCH_LIMIT = CesiumMath.toRadians(18);
@@ -109,6 +109,7 @@ const locationSelect = document.querySelector("#location-select");
 const resetFlightButton = document.querySelector("#reset-flight");
 const hudPanel = document.querySelector("#hud-panel");
 const hudToggle = document.querySelector("#hud-toggle");
+const speedLines = document.querySelector("#speed-lines");
 
 const keyState = new Set();
 
@@ -126,6 +127,7 @@ const droneState = {
 let viewer;
 let droneEntity;
 let terrainProvider;
+let buildingsTileset;
 let streetLookupState = {
   lastLookupAt: 0,
   lastLongitude: null,
@@ -185,15 +187,15 @@ async function bootstrap() {
     }),
   );
 
-  const buildings = await Cesium3DTileset.fromUrl(swissBuildingsUrl, {
+  buildingsTileset = await Cesium3DTileset.fromUrl(swissBuildingsUrl, {
     skipLevelOfDetail: true,
     maximumScreenSpaceError: 8,
     dynamicScreenSpaceError: true,
     preloadWhenHidden: false,
     cullRequestsWhileMoving: true,
   });
-  decorateBuildings(buildings);
-  viewer.scene.primitives.add(buildings);
+  decorateBuildings(buildingsTileset);
+  viewer.scene.primitives.add(buildingsTileset);
 
   const initialPreset = LOCATIONS[0];
   await placeDrone(initialPreset);
@@ -394,6 +396,7 @@ function updateFrame(scene, time) {
 
   const boost = keyState.has("ShiftLeft") || keyState.has("ShiftRight");
   const speed = BASE_SPEED * (boost ? BOOST_MULTIPLIER : 1);
+  applyBoostPresentation(boost);
 
   let forward = 0;
   let strafe = 0;
@@ -494,6 +497,9 @@ function updateCamera() {
     return;
   }
 
+  viewer.camera.frustum.fov = CesiumMath.toRadians(
+    speedLines.classList.contains("is-active") ? 74 : 62,
+  );
   viewer.camera.lookAt(
     droneState.position,
     new HeadingPitchRange(
@@ -520,6 +526,15 @@ function updateReadouts(cartographic, dt) {
 function enuOffsetToWorld(localOffset, anchor) {
   const enuFrame = Transforms.eastNorthUpToFixedFrame(anchor);
   return Matrix4.multiplyByPointAsVector(enuFrame, localOffset, new Cartesian3());
+}
+
+function applyBoostPresentation(boost) {
+  speedLines.classList.toggle("is-active", boost);
+  viewer.scene.globe.maximumScreenSpaceError = boost ? 2.4 : 1.6;
+
+  if (buildingsTileset) {
+    buildingsTileset.maximumScreenSpaceError = boost ? 14 : 8;
+  }
 }
 
 function decorateBuildings(buildings) {
