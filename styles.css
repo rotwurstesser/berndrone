@@ -79,6 +79,40 @@ body {
   cursor: pointer;
 }
 
+.flight-bar {
+  position: absolute;
+  bottom: 1.25rem;
+  left: 50%;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: min(34rem, calc(100vw - 2rem));
+  max-width: calc(100vw - 2rem);
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--panel), var(--panel-strong));
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(18px);
+  transform: translateX(-50%);
+}
+
+.flight-bar__label {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.flight-bar strong {
+  overflow: hidden;
+  color: var(--accent-2);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .hud__eyebrow {
   color: var(--accent);
   font-size: 0.78rem;
@@ -210,5 +244,13 @@ kbd {
     top: 0.85rem;
     right: 0.85rem;
     min-width: 0;
+  }
+
+  .flight-bar {
+    right: 0.85rem;
+    bottom: 0.85rem;
+    left: 0.85rem;
+    min-width: 0;
+    transform: none;
   }
 }

@@ -12,3 +12,4 @@ coverage/
 *.log
 .playwright-mcp/
 *.png
+.netlify/

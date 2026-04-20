@@ -44,11 +44,43 @@ const LOCATIONS = [
     altitude: 180,
     headingDeg: 24,
   },
+  {
+    id: "jegenstorf",
+    label: "Jegenstorf",
+    longitude: 7.50588,
+    latitude: 47.04869,
+    altitude: 170,
+    headingDeg: 18,
+  },
+  {
+    id: "basel-old-town",
+    label: "Basel Old Town",
+    longitude: 7.58858,
+    latitude: 47.55673,
+    altitude: 190,
+    headingDeg: 30,
+  },
+  {
+    id: "geneva-center",
+    label: "Geneva Center",
+    longitude: 6.14657,
+    latitude: 46.20176,
+    altitude: 190,
+    headingDeg: 28,
+  },
+  {
+    id: "gumligen",
+    label: "Gümligen",
+    longitude: 7.50379,
+    latitude: 46.93489,
+    altitude: 155,
+    headingDeg: 24,
+  },
 ];
 
 const DEFAULT_CLEARANCE_METERS = 14;
 const BASE_SPEED = 42;
-const BOOST_MULTIPLIER = 2.65;
+const BOOST_MULTIPLIER = 4.8;
 const ASCENT_RATE = 24;
 const CAMERA_RANGE = { min: 12, max: 80 };
 const DISPLAY_PITCH_LIMIT = CesiumMath.toRadians(18);
@@ -60,9 +92,12 @@ const swissImageUrl =
   "https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage-product/default/current/3857/{z}/{x}/{y}.jpeg";
 const swissBuildingsUrl =
   "https://3d.geo.admin.ch/ch.swisstopo.swissbuildings3d.3d/v1/tileset.json";
+const streetIdentifyUrl =
+  "https://api3.geo.admin.ch/rest/services/ech/MapServer/identify";
 const swissBounds = Rectangle.fromDegrees(5.95, 45.75, 10.7, 47.95);
 
 const streamStatus = document.querySelector("#stream-status");
+const streetReadout = document.querySelector("#street-readout");
 const altitudeReadout = document.querySelector("#altitude-readout");
 const speedReadout = document.querySelector("#speed-readout");
 const locationSelect = document.querySelector("#location-select");
@@ -86,6 +121,12 @@ const droneState = {
 let viewer;
 let droneEntity;
 let terrainProvider;
+let streetLookupState = {
+  lastLookupAt: 0,
+  lastLongitude: null,
+  lastLatitude: null,
+  requestId: 0,
+};
 
 bootstrap().catch((error) => {
   console.error(error);
@@ -282,6 +323,13 @@ async function placeDrone(preset) {
   droneState.cameraDistance = 26;
   droneState.displayPitch = 0;
   droneState.displayRoll = 0;
+  streetLookupState = {
+    lastLookupAt: 0,
+    lastLongitude: null,
+    lastLatitude: null,
+    requestId: 0,
+  };
+  streetReadout.textContent = "Looking up...";
 
   if (!droneEntity) {
     droneEntity = viewer.entities.add({
@@ -428,6 +476,7 @@ function updateFrame(scene, time) {
   );
 
   updateReadouts(cartographic, dt);
+  maybeLookupStreet(cartographic);
   updateCamera();
 }
 
@@ -462,4 +511,79 @@ function updateReadouts(cartographic, dt) {
 function enuOffsetToWorld(localOffset, anchor) {
   const enuFrame = Transforms.eastNorthUpToFixedFrame(anchor);
   return Matrix4.multiplyByPointAsVector(enuFrame, localOffset, new Cartesian3());
+}
+
+function maybeLookupStreet(cartographic) {
+  const now = performance.now();
+  const longitude = CesiumMath.toDegrees(cartographic.longitude);
+  const latitude = CesiumMath.toDegrees(cartographic.latitude);
+  const movedEnough =
+    streetLookupState.lastLongitude === null ||
+    Math.abs(longitude - streetLookupState.lastLongitude) > 0.00012 ||
+    Math.abs(latitude - streetLookupState.lastLatitude) > 0.00012;
+  const waitedEnough = now - streetLookupState.lastLookupAt > 1400;
+
+  if (!movedEnough || !waitedEnough) {
+    return;
+  }
+
+  streetLookupState.lastLookupAt = now;
+  streetLookupState.lastLongitude = longitude;
+  streetLookupState.lastLatitude = latitude;
+  streetLookupState.requestId += 1;
+  const requestId = streetLookupState.requestId;
+
+  lookupStreetName(longitude, latitude)
+    .then((streetName) => {
+      if (requestId !== streetLookupState.requestId) {
+        return;
+      }
+
+      streetReadout.textContent = streetName ?? "No street match";
+    })
+    .catch(() => {
+      if (requestId !== streetLookupState.requestId) {
+        return;
+      }
+
+      streetReadout.textContent = "Street unavailable";
+    });
+}
+
+async function lookupStreetName(longitude, latitude) {
+  const delta = 0.00022;
+  const bbox = [
+    longitude - delta,
+    latitude - delta,
+    longitude + delta,
+    latitude + delta,
+  ].join(",");
+  const params = new URLSearchParams({
+    geometryType: "esriGeometryEnvelope",
+    geometry: bbox,
+    imageDisplay: "100,100,96",
+    mapExtent: bbox,
+    tolerance: "8",
+    layers: "all:ch.swisstopo.amtliches-strassenverzeichnis",
+    returnGeometry: "false",
+    sr: "4326",
+    lang: "en",
+  });
+
+  const response = await fetch(`${streetIdentifyUrl}?${params.toString()}`);
+  if (!response.ok) {
+    throw new Error(`Street lookup failed with ${response.status}`);
+  }
+
+  const data = await response.json();
+  const streetResult = data.results?.find(
+    (result) =>
+      result.properties?.stn_label || result.attributes?.stn_label,
+  );
+
+  return (
+    streetResult?.properties?.stn_label ??
+    streetResult?.attributes?.stn_label ??
+    null
+  );
 }
