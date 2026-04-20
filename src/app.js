@@ -85,6 +85,10 @@ const ASCENT_RATE = 24;
 const CAMERA_RANGE = { min: 12, max: 80 };
 const DISPLAY_PITCH_LIMIT = CesiumMath.toRadians(18);
 const DISPLAY_ROLL_LIMIT = CesiumMath.toRadians(26);
+const BUILDING_BASE_COLOR = Color.fromCssColorString("#7f98ae");
+const BUILDING_ROOF_COLOR = Color.fromCssColorString("#b77b8a");
+const BUILDING_SHINY_GOLD = Color.fromCssColorString("#ffd85c");
+const BUILDING_SHINY_CYAN = Color.fromCssColorString("#58e0ff");
 
 const terrainServiceUrl =
   "https://3d.geo.admin.ch/ch.swisstopo.terrain.3d/v1";
@@ -187,6 +191,7 @@ async function bootstrap() {
     preloadWhenHidden: false,
     cullRequestsWhileMoving: true,
   });
+  decorateBuildings(buildings);
   viewer.scene.primitives.add(buildings);
 
   const initialPreset = LOCATIONS[0];
@@ -344,11 +349,13 @@ async function placeDrone(preset) {
           ),
         );
       }, false),
-      box: {
-        dimensions: new Cartesian3(3.8, 1.1, 1.4),
-        material: Color.fromCssColorString("#7ee081"),
-        outline: true,
-        outlineColor: Color.fromCssColorString("#0a1119"),
+      model: {
+        uri: "./assets/drone.glb",
+        scale: 2.2,
+        minimumPixelSize: 56,
+        maximumScale: 18,
+        silhouetteColor: Color.fromCssColorString("#73c7ff"),
+        silhouetteSize: 0.35,
       },
     });
   }
@@ -511,6 +518,73 @@ function updateReadouts(cartographic, dt) {
 function enuOffsetToWorld(localOffset, anchor) {
   const enuFrame = Transforms.eastNorthUpToFixedFrame(anchor);
   return Matrix4.multiplyByPointAsVector(enuFrame, localOffset, new Cartesian3());
+}
+
+function decorateBuildings(buildings) {
+  buildings.tileVisible.addEventListener((tile) => {
+    const { content } = tile;
+    const featuresLength = content?.featuresLength ?? 0;
+
+    for (let index = 0; index < featuresLength; index += 1) {
+      const feature = content.getFeature(index);
+
+      if (feature.__berndroneDecorated) {
+        continue;
+      }
+
+      feature.color = pickBuildingColor(feature, index);
+      feature.__berndroneDecorated = true;
+    }
+  });
+}
+
+function pickBuildingColor(feature, index) {
+  const seed = featureSeed(feature, index);
+  const shinyRoll = seed % 100;
+  const toneRoll = Math.floor(seed / 100) % 100;
+  const isRoof =
+    String(feature.getProperty?.("class") ?? "").toLowerCase().includes("roof") ||
+    String(feature.getProperty?.("type") ?? "").toLowerCase().includes("roof");
+
+  let color = isRoof ? Color.clone(BUILDING_ROOF_COLOR) : Color.clone(BUILDING_BASE_COLOR);
+
+  if (shinyRoll < 2) {
+    color = Color.clone(BUILDING_SHINY_GOLD);
+  } else if (shinyRoll < 4) {
+    color = Color.clone(BUILDING_SHINY_CYAN);
+  } else if (toneRoll < 18) {
+    color = Color.lerp(color, Color.WHITE, 0.16, new Color());
+  } else if (toneRoll > 84) {
+    color = Color.lerp(color, Color.BLACK, 0.14, new Color());
+  }
+
+  color.alpha = 1;
+  return color;
+}
+
+function featureSeed(feature, index) {
+  const candidateKeys = ["id", "objectid", "egid", "gml_id", "uuid", "name"];
+  let source = "";
+
+  for (const key of candidateKeys) {
+    const value = feature.getProperty?.(key);
+    if (value !== undefined && value !== null && value !== "") {
+      source = String(value);
+      break;
+    }
+  }
+
+  if (!source) {
+    source = `feature-${index}`;
+  }
+
+  let hash = 2166136261;
+  for (let i = 0; i < source.length; i += 1) {
+    hash ^= source.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+
+  return hash >>> 0;
 }
 
 function maybeLookupStreet(cartographic) {
